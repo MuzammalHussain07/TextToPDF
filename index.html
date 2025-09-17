@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Write & Download PDF — Article → PDF</title>
+  <meta name="description" content="Simple single-file site to write articles and download as PDF" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/modern-normalize/1.1.0/modern-normalize.min.css" integrity="" crossorigin="anonymous">
+  <style>
+    :root{ --maxw:900px; --muted:#6b7280; --accent:#0f62fe }
+    body{font-family:Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; padding:24px; background:#f7fafc; color:#0f172a}
+    .wrap{max-width:var(--maxw); margin:0 auto}
+    header{display:flex;gap:12px;align-items:center;margin-bottom:18px}
+    h1{font-size:20px;margin:0}
+    .controls{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+    input[type=text]{padding:10px;border-radius:8px;border:1px solid #e6edf3;min-width:200px}
+    textarea{width:100%;min-height:240px;padding:12px;border-radius:8px;border:1px solid #e6edf3;font:inherit;resize:vertical}
+    button{background:var(--accent);color:white;border:none;padding:10px 14px;border-radius:8px;cursor:pointer}
+    button.secondary{background:#374151}
+    .cols{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    .card{background:white;padding:14px;border-radius:10px;box-shadow:0 6px 18px rgba(10,20,40,0.04)}
+    .preview{padding:22px}
+    .meta{color:var(--muted);font-size:13px;margin-bottom:8px}
+    .article-title{font-size:22px;margin:8px 0}
+    .article-body{line-height:1.6;white-space:pre-wrap}
+    footer{margin-top:14px;color:var(--muted);font-size:13px}
+    @media (max-width:900px){.cols{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Write → Preview → Download PDF</h1>
+      <div style="margin-left:auto;color:var(--muted)">Single-file ready-to-launch</div>
+    </header>
+
+    <div class="card">
+      <div class="controls">
+        <input id="titleInput" type="text" placeholder="Article title (used for filename)" value="My Article" />
+        <input id="authorInput" type="text" placeholder="Author (optional)" />
+        <select id="formatSelect" title="Paper size">
+          <option value="a4">A4</option>
+          <option value="letter">Letter</option>
+        </select>
+        <button id="previewBtn" class="secondary">Preview</button>
+        <button id="downloadBtn">Download PDF</button>
+      </div>
+
+      <textarea id="editor" placeholder="Write your article here...\nYou can paste from Word or Google Docs. Use basic markdown-like line breaks for paragraphs.">Write your article here.
+
+This is sample content. Replace this with your article text. Use the preview button to format and then download as PDF.</textarea>
+    </div>
+
+    <div style="height:16px"></div>
+
+    <div class="cols">
+      <div class="card">
+        <div class="meta">Preview (what will be converted to PDF):</div>
+        <div id="preview" class="preview" style="min-height:360px">
+          <div class="meta">No preview yet — click Preview</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="meta">Options & instructions</div>
+        <ol style="padding-left:18px">
+          <li>Write or paste your article into the editor.</li>
+          <li>Click <strong>Preview</strong> to render formatting.</li>
+          <li>Click <strong>Download PDF</strong> to generate an A4/Letter PDF using the article title as filename.</li>
+        </ol>
+
+        <div style="height:12px"></div>
+        <div class="meta">Tips</div>
+        <ul style="padding-left:18px">
+          <li>Use blank lines between paragraphs.</li>
+          <li>To include headings, start a line with <code># Heading</code> (light Markdown-like support).</li>
+          <li>For images: host them online and insert as <code>&lt;img src=\"URL\"/&gt;</code> inside preview after clicking preview (advanced).</li>
+        </ul>
+      </div>
+    </div>
+
+    <footer>To host: push this single <code>index.html</code> to a GitHub repo and enable GitHub Pages (main branch).</footer>
+  </div>
+
+  <!-- html2pdf bundle -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.2/html2pdf.bundle.min.js"></script>
+  <script>
+    const editor = document.getElementById('editor');
+    const preview = document.getElementById('preview');
+    const titleInput = document.getElementById('titleInput');
+    const authorInput = document.getElementById('authorInput');
+    const previewBtn = document.getElementById('previewBtn');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const formatSelect = document.getElementById('formatSelect');
+
+    function markdownLiteToHtml(text){
+      // Very small Markdown-like parser for headings and paragraphs
+      const lines = text.split('\n');
+      let html = '';
+      for(let i=0;i<lines.length;i++){
+        const line = lines[i].trim();
+        if(!line){ html += '<p></p>'; continue; }
+        if(line.startsWith('# ')) html += `<h2 class=\"article-title\">${escapeHtml(line.replace('# ',''))}</h2>`;
+        else if(line.startsWith('## ')) html += `<h3>${escapeHtml(line.replace('## ',''))}</h3>`;
+        else html += `<p class=\"article-body\">${escapeHtml(line)}</p>`;
+      }
+      return html;
+    }
+
+    function escapeHtml(str){
+      return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    function renderPreview(){
+      const title = titleInput.value.trim();
+      const author = authorInput.value.trim();
+      const content = editor.value;
+      const bodyHtml = markdownLiteToHtml(content);
+      const now = new Date();
+      const dateStr = now.toLocaleDateString();
+      preview.innerHTML = `\n        <div style=\"max-width:720px;margin:0 auto;font-family: Georgia, 'Times New Roman', serif; color:#0b1220\">\n          ${title?`<div style=\\"text-align:center;margin-bottom:12px\\">\n            <div style=\\"font-size:22px;font-weight:600\\">${escapeHtml(title)}</div>\n            <div style=\\"color:#374151;font-size:13px;margin-top:6px\\">${author?escapeHtml(author):''} ${author?' • ':''}${dateStr}</div>\n          </div>`:''}
+          <div>${bodyHtml}</div>\n        </div>`;
+    }
+
+    previewBtn.addEventListener('click', ()=>{
+      renderPreview();
+      window.scrollTo({top: preview.offsetTop - 12, behavior:'smooth'});
+    });
+
+    downloadBtn.addEventListener('click', ()=>{
+      // Ensure preview is up-to-date
+      renderPreview();
+      // small delay to ensure DOM update
+      setTimeout(()=>{
+        const opt = {
+          margin:       15,
+          filename:     (titleInput.value.trim()||'article') + '.pdf',
+          image:        { type: 'jpeg', quality: 0.98 },
+          html2canvas:  { scale: 2, useCORS: true },
+          jsPDF:        { unit: 'mm', format: formatSelect.value, orientation: 'portrait' }
+        };
+        // use the preview container
+        html2pdf().set(opt).from(preview).save();
+      },120);
+    });
+
+    // render initial preview
+    renderPreview();
+  </script>
+</body>
+</html>
